@@ -1,0 +1,233 @@
+Filename: pheno.Rmd
+
+#### RSTUDIO ####
+
+# Reading in packages
+library(tidyverse)
+
+# Read in the data and editing 
+{
+read.csv("~/NHS_breedingstatistics.csv", sep = ";") -> info.tbl
+
+## Rename columns
+names(info.tbl)[1] <- "CoverID"
+names(info.tbl)[2] <- "bedekningsar"
+info.tbl %>% mutate_all(~na_if(.,"")) -> info.tbl
+info.tbl$Resultat[is.na(info.tbl$Resultat)] <- 'Unknown'
+}
+
+# Looking at how many coverings are without Result in the table
+info.tbl %>% filter(Spre.Kod != "F" & Spre.Kod != "TOM" & Spre.Kod != "K" & Spre.Kod != "D" & Spre.Kod != "FD" & Spre.Kod != "SD" & Spre.Kod != "RE" & Spre.Kod != "TD" & Spre.Kod != "KT" & Spre.Kod != "T") -> other.results
+remove(other.results)
+
+## Re-code the results as foal/nonfoal for further visualization
+{
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "F", "Foal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "FD", "Nonfoal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "TOM", "Nonfoal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "RE", "Nonfoal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "TD", "Foal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "KT", "Nonfoal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "K", "Nonfoal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "T", "Foal")
+info.tbl$Resultat <- replace(info.tbl$Resultat, info.tbl$Spre.Kod == "D", "Foal")
+info.tbl %>% filter(is.na(Spre.Kod)|Spre.Kod !="SD") -> info.tbl
+}
+
+# Check that i dont have many different element names
+{
+unique(info.tbl$Spre.Kod)
+} 
+
+
+# Visualizing data of Cover results
+# Loading Packages
+library(ggplot2)
+
+# Total results of all animal of all years
+info.tbl %>%  ggplot(mapping = aes(x = Spre.Kod, fill=Spre.Kod)) + geom_bar() + labs(title="Result of All Coverings", subtitle = "from 1989-2020", y="Count", x="", fill="Result")
+
+# descending of above plot
+info2 <- info.tbl %>% group_by(Spre.Kod) %>% mutate(count_name_occurr = n())
+info2 %>%  ggplot(mapping = aes(x = reorder(Spre.Kod, -count_name_occurr), fill=Spre.Kod)) + geom_bar() + labs(title="Result of All Coverings", subtitle = "from 1989-2020", y="Count", x="", fill="Result")
+
+info2 <- info.tbl %>% group_by(Resultat) %>% mutate(count_name_occurr = n())
+info2 %>%  ggplot(mapping = aes(x = reorder(Resultat, -count_name_occurr), fill=Resultat)) + geom_bar() + labs(title="Result of All Coverings", subtitle = "from 1989-2020", y="Count", x="", fill="Result")
+
+info.tbl %>% ggplot(mapping = aes(bedekningsar, Spre.Kod, color= Spre.Kod)) + geom_point()+ labs(title="Result of All Coverings", subtitle = "from 1989-2020", y="Count")
+info.tbl %>% count(Spre.Kod) %>% ggplot()+geom_point(aes(x = Spre.Kod, y = n, color = Spre.Kod)) # produce a histogram of all cases
+
+ggsave("~/totalcov.png", device = "png")
+
+# Frequency Plot
+info.tbl %>% ggplot(mapping = aes(x = bedekningsar, color = Resultat)) + geom_freqpoly(binwidth = 1, size = 0.5) + labs(title = "Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = "Count")  + scale_color_discrete("Results") 
+
+info.tbl %>% ggplot(mapping = aes(x = bedekningsar, color = Spre.Kod)) + geom_freqpoly(binwidth = 1, size = 0.5) + facet_wrap(~bedekningsar) + labs(title = "Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = "Count") 
+
+info.tbl %>% ggplot(mapping = aes(x = bedekningsar, color = Spre.Kod)) + geom_freqpoly(binwidth = 1, size = 0.5) + facet_wrap(~Spre.Kod) + labs(title = "Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = "Count") 
+
+info.tbl %>% ggplot(mapping = aes(x = bedekningsar, color = Spre.Kod)) + geom_freqpoly(binwidth = 1, size = 0.5) + facet_wrap(~Spre.Kod) + labs(title = "Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = "Count")
+
+ggsave("~/totalresyear.png", device = "png")
+
+# Relative Frequency Plot
+ggplot(data = info.tbl, mapping = aes(x = bedekningsar, y = after_stat(density), fill = Spre.Kod, color = Spre.Kod)) + geom_freqpoly(binwidth = 1, size = 0.5) + labs(title = "Relative Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = " Density") 
+
+ggplot(data = info.tbl, mapping = aes(x = bedekningsar, y = after_stat(density), fill = Spre.Kod, color = Spre.Kod)) + geom_freqpoly(binwidth = 1, size = 0.5) + facet_wrap(~Spre.Kod) + labs(title = "Relative Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = " Density") 
+
+# Save plot to file
+ggsave("~/totalresrelfreq.png", device = "png")
+
+# Visualizing the Binary results
+# Relative Frequency plot
+info.tbl %>% ggplot(mapping = aes(bedekningsar, after_stat(density), color = Resultat)) + geom_freqpoly(binwidth = 1, size = 0.5) + labs(title = "Relative Frequency Plot", subtitle = "Norwegian Fjord Horse", x = "Year", y = " Density", colour="Result") + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+# Frequency plot
+info.tbl %>% ggplot(mapping = aes(bedekningsar, fill = Resultat, color = Resultat)) + geom_freqpoly(binwidth = 1, size = 0.5) + labs(title = "Frequency Plot", subtitle = "Norwegian Fjord Horse breeding statisticcs 1989-2020", x = "Year", y = " Frequency") + theme(legend.position = "bottom", legend.key.width = unit(10, "points")) + scale_color_discrete("Results")
+
+# Relative frequency plot of stacked bars
+info1.tbl %>% ggplot(aes(x = bedekningsar, fill = bin_result)) + geom_bar(position = "fill", col = "black") + labs(title = "Relative Frequency Plot per Year", subtitle = "Norwegian Fjord Horse", x = "Year", y = " Density") + theme(legend.position = "bottom", legend.key.width = unit(10, "points")) + scale_fill_discrete(name = "Results")
+
+# Save and remove uneccesary data
+ggsave("~/totalfrebin.png", device = "png")
+remove(info1.tbl)
+
+##########
+
+# Paternal Fertility Measures
+
+# Fertility Rate (FR)
+unique(info.tbl$Far.ID)-> PID
+{
+info.tbl %>% group_by(Far.ID) %>% count(Far.ID, name = "total") -> total 
+info.tbl %>% group_by(Far.ID) %>% count(Spre.Kod, name = "sucsess") %>% filter(Spre.Kod == "F") -> sucsess 
+left_join(total, sucsess, by=c("Far.ID")) -> PFR.tbl 
+PFR.tbl$sucsess[is.na(PFR.tbl$sucsess)] <- '0'
+as.numeric(PFR.tbl$sucsess) -> PFR.tbl$sucsess
+PFR.tbl %>% mutate(FR = (sucsess/total)*100) -> PFR.tbl 
+subset(PFR.tbl, select = -c(Spre.Kod))
+}
+
+{
+mean(PFR.tbl$FR, na.rm = TRUE)
+median(PFR.tbl$FR, na.rm = TRUE)
+
+PFR.tbl %>% filter(total >= 5) -> PFR5.tbl
+mean(PFR5.tbl$FR, na.rm = TRUE) 
+median(PFR5.tbl$FR, na.rm = TRUE)
+}
+
+{
+total %>% filter(total>=100) ->z 
+sucsess %>% filter(sucsess>=50) ->z
+remove(sucsess, total, z) 
+}
+
+total %>% ggplot(mapping = aes(x = total)) + geom_freqpoly(binwidth = 1, size = 0.5) + labs(title = "Frequency Plot of Total Stallion Coverings", subtitle = "from 1989-2020 on Norwegian Fjord Horse", x = "Total", y = "Count")
+
+sucsess %>% ggplot(mapping = aes(x = sucsess)) + geom_freqpoly(binwidth = 1, size = 0.5) + labs(title = "Frequency Plot of Total Stallion Coverings", subtitle = "from 1989-2020 on Norwegian Fjord Horse", x = "Total", y = "Count")
+
+# 
+library(tidyverse)
+library(ggplot2)
+
+ggplot() + geom_boxplot(PFR.tbl, mapping = aes(,FR)) + labs(title = "Foaling Rate in Stallions", subtitle = "Between 1989-2020") + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+PFR.tbl %>% filter(total >= 5)%>% ggplot() + geom_density(mapping = aes(, FR),) + coord_flip() + labs(title = "Foaling Rate Distribution in Stallions", subtitle = "Between 1989-2020 with more than 5 coverings", x= "Density", y = "Foaling Rate")  + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+ggsave("~/Masterproject/Out/frdenstydiststal.png", device = "png")
+ggsave("~/Masterproject/Out/stallboxfr.png", device = "png")
+
+##########
+
+# Maternal Fertility Rate (FR)
+
+unique(info.tbl$Mor.ID)-> MID
+{
+info.tbl %>% group_by(Mor.ID) %>% count(Mor.ID, name = "total") -> total 
+info.tbl %>% group_by(Mor.ID) %>% count(Spre.Kod, name = "sucsess") %>% filter(Spre.Kod == "F") ->sucsess 
+left_join(total, sucsess, by=c("Mor.ID")) -> MFR.tbl 
+MFR.tbl$sucsess[is.na(MFR.tbl$sucsess)] <- '0'
+as.numeric(MFR.tbl$sucsess) -> MFR.tbl$sucsess
+MFR.tbl %>% mutate(FR = (sucsess/total)*100) -> MFR.tbl
+subset(MFR.tbl, select = -c(Spre.Kod))
+
+remove(sucsess, total) # remove the excessive datasets
+}
+
+{
+total %>% filter(total>=20) ->z
+sucsess %>% filter(sucsess>=15) ->z 
+remove(sucsess, total, z) # remove the excessive datasets
+}
+
+mean(MFR.tbl$FR, na.rm = TRUE) 
+median(MFR.tbl$FR, na.rm = TRUE) 
+
+MFR.tbl %>% filter(total >= 5) -> MFR5.tbl
+mean(MFR5.tbl$FR, na.rm = TRUE) 
+median(MFR5.tbl$FR, na.rm = TRUE) 
+
+# 
+library(tidyverse)
+library(ggplot2)
+
+ggplot() + geom_boxplot(MFR.tbl, mapping = aes(,FR)) + labs(title = "Foaling Rate in Mares", subtitle = "Between 1989-2020") + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+MFR.tbl %>% filter(total >= 5)%>% ggplot() + geom_boxplot(MFR.tbl, mapping = aes(,FR)) + labs(title = "Foaling Rate in Mares", subtitle = "Between 1989-2020") + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+MFR.tbl %>% filter(total >= 5)%>% ggplot() + geom_density(mapping = aes(, FR)) + coord_flip() + labs(title = "Foaling Rate Distribution in Mares", subtitle = "Between 1989-2020 with more than 5 coverings", x= "Density", y = "Foaling Rate") + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+MFR.tbl %>% ggplot() + geom_density(mapping = aes(, FR)) + coord_flip() + labs(title = "Foaling Rate Distribution in Mares", subtitle = "Between 1989-2020 with more than 5 coverings", x= "Density", y = "Foaling Rate") + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+ggsave("~/boxplmarfr.png", device = "png")
+ggsave("~/frdenstydistmar.png", device = "png")
+
+##########
+
+# Fertility per Year
+{
+info.tbl %>% group_by(bedekningsar) %>% count(bedekningsar, name = "total_year") -> total_year
+info.tbl %>% group_by(bedekningsar) %>% count(Resultat, name = "sucsess_year") %>% filter(Resultat == "Foal") -> sucsess_year
+left_join(total_year, sucsess_year, by = "bedekningsar") -> fertility_year.tbl 
+fertility_year.tbl %>% mutate(FR_year = (sucsess_year/total_year)*100) -> fertility_year.tbl
+remove(total_year, sucsess_year)
+}
+
+mean(fertility_year.tbl$FR_year) 
+
+fertility_year.tbl %>% ggplot(mapping = aes(x = bedekningsar, y = FR_year)) + geom_point(color = "black", size = 1) + geom_smooth(method = "gam", fill = "grey", color = "black", n = 32, linewidth = 1) + labs(title = "Foaling rate from 1989-2020", subtitle = "of all Norwegian Fjord Horses", x = "Year", y = "Foaling Rate") + xlim(1989, 2020) + ylim(50, 66) + scale_x_continuous(breaks=seq(1989, 2020, 2))
+
+ggsave("~/totfertyear.png", device = "png")
+
+##########
+
+# Number of Stallions and Mares breeding per year
+# Unique Id's in the dataset
+unique(info.tbl$Far.ID) -> PID 
+unique(info.tbl$Mor.ID) -> MID
+remove(MID, PID)
+
+# Counting the number of times a horse was used per year
+info.tbl %>% group_by(bedekningsar) %>% count(Mor.ID, name = "mares_year") -> mares_year 
+info.tbl %>% group_by(bedekningsar) %>% count(Far.ID, name = "stallions_year") -> stallions_year 
+remove(mares_year, stallions_year)
+
+# Counting the number of times one stallion was used on one mare
+info.tbl %>% group_by(Mor.ID) %>% count(Far.ID, name = "n_matches") -> matches 
+matches %>% filter(n_matches >=4) -> filtmatches 
+
+# Extract ID's of mares and stallions matched more than 4 times to investigate their reproductive efficiency.
+unique(filtmatches$Far.ID) -> uniquematchPID 
+unique(filtmatches$Mor.ID) -> uniquematchMID 
+
+
+# Need to figure how to group these by year, like a stack plot counting each cover per year
+mares_year %>% ggplot(mapping = aes(x = bedekningsar, y = mares_year)) + geom_smooth(method = "gam", fill = "grey", color = "black", linewidth = 1) + labs(title = "Avrage Number of Coverings per Mare a year", subtitle = "Norwegian Fjord Horse", x = "Year", y = "Covers")
+
+stallions_year %>% ggplot(mapping = aes(x = bedekningsar, y = stallions_year)) + geom_smooth(method = "gam", fill = "grey", color = "black", linewidth = 1) + labs(title = "Average Number of Coverings per Stallion a year", subtitle = "Norwegian Fjord Horse", x = "Year", y = "Covers") 
+
+ggsave("~/marecov.png", device = "png")
+ggsave("~/stallcov.png", device = "png")
+
+##########
